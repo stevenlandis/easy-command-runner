@@ -1,4 +1,4 @@
-import { cmd } from "../src";
+import { cmd, CmdError } from "../src";
 import * as fs from "fs";
 import * as path from "path";
 import * as child_process from "child_process";
@@ -289,5 +289,18 @@ describe("cmd", () => {
     expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
       "fruit\n"
     );
+  });
+
+  it("catch CmdError directly", async () => {
+    let err!: CmdError;
+    try {
+      await cmd("node", "test/fail.js").get();
+    } catch (_err: any) {
+      err = _err;
+    }
+
+    expect(err).toBeInstanceOf(CmdError);
+    expect(err.code).toBe(3);
+    expect(err.stderr).toBe("This is an error\n");
   });
 });

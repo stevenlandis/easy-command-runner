@@ -1,1 +1,1 @@
-export { cmd } from "./cmd";
+export { cmd, CmdError } from "./cmd";
