@@ -26,5 +26,9 @@
     "exec",
     "run",
     "easy"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stevenlandis/easy-command-runner"
+  }
 }
