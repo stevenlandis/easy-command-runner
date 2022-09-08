@@ -1,7 +1,15 @@
 {
-  "private": true,
+  "name": "easy-command-runner",
+  "license": "MIT",
+  "version": "0.0.0",
+  "description": "The way you've always wanted to to call commands from nodejs.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "/build"
+  ],
   "scripts": {
-    "build": "node scripts/esbuild.js",
+    "build": "rm -rf build && tsc",
     "test": "jest"
   },
   "devDependencies": {

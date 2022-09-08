@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "declaration": true,
+    "outDir": "build",
+    "module": "commonjs",
+    "target": "es2015"
+  },
+  "include": ["src/**/*"]
 }
