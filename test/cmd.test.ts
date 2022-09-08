@@ -323,4 +323,20 @@ describe("cmd", () => {
       "apples"
     );
   });
+
+  it("run command", async () => {
+    await cmd("echo", "hey").run();
+  });
+
+  it("run invalid command", async () => {
+    expect(cmd("fhsjakfhsadkjl").run()).rejects.toThrow(
+      "spawn fhsjakfhsadkjl ENOEN"
+    );
+  });
+
+  it("get invalid command", async () => {
+    expect(cmd("fdsafsadfsdfsa").get()).rejects.toThrow(
+      "spawn fdsafsadfsdfsa ENOEN"
+    );
+  });
 });

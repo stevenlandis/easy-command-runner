@@ -123,7 +123,10 @@ class Cmd extends CmdSource {
     };
   }
 
-  async baseRun() {
+  async baseRun({
+    stdout = "pipe",
+    stderr = "pipe",
+  }: { stdout?: "pipe" | any; stderr?: "pipe" | any } = {}) {
     let sourceStream = await this.source?.getStream();
     let stdin =
       sourceStream === undefined
@@ -134,7 +137,7 @@ class Cmd extends CmdSource {
 
     let proc = child_process.spawn(this.command[0], this.command.slice(1), {
       cwd: this.cwd,
-      stdio: [stdin, "pipe", "pipe"],
+      stdio: [stdin, stdout, stderr],
     });
 
     if (
@@ -145,6 +148,25 @@ class Cmd extends CmdSource {
     }
 
     return { proc };
+  }
+
+  async run() {
+    let proc = (
+      await this.baseRun({ stdout: process.stdout, stderr: process.stderr })
+    ).proc;
+
+    await new Promise<void>((resolve, reject) => {
+      proc.on("error", (err) => {
+        reject(err);
+      });
+      proc.on("close", async (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new CmdError(code, ""));
+        }
+      });
+    });
   }
 
   async get() {
@@ -161,6 +183,9 @@ class Cmd extends CmdSource {
     });
 
     await new Promise<void>((resolve, reject) => {
+      proc.on("error", (err) => {
+        reject(err);
+      });
       proc.on("close", async (code) => {
         if (code === 0) {
           resolve();
