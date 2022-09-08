@@ -1,6 +1,6 @@
 # Easy Command Runner
 
-This is the way you've always wanted to run shell commands.
+This is the way you've always wanted to run shell commands in nodejs.
 
 ```ts
 import { cmd } from "easy-command-runner";
