@@ -24,16 +24,17 @@ This library is a lightweight wrapper around the [`child_process`](https://nodej
 
 With default support for promises and many different input-output types, this library can support the most demanding process workloads while being efforless to use.
 
-## Documentation
+### Documentation
 
 There are two parts to a command: the executable and arguments. Each argument in this library is passed in as a separate string. While this makes commands a little harder to type, it makes development much easier because you don't need to worry about string escaping or special characters.
 
 ```ts
 // Even though the second argument has a bunch of special
 // characters, it will be interpreted as a string literal.
-
 // This prevents a whole class of security vulnerabilities.
 await cmd("echo", "$ENV_VAR && ls > some.txt").run();
+
+// prints out "$ENV_VAR && ls > some.txt"
 ```
 
 To make up for the lack of special operators like the pipe operator, there are first-class primitives for combining commands and files together.
@@ -62,9 +63,7 @@ await cmd
   .toFile("fruit_image_urls.txt");
 ```
 
-By combining these primitives in different ways alongside built-in concurrency helpers like `Promise.all()`, `easy-command-runner` makes it easy to run commands.
-
-## Error Handling
+### Error Handling
 
 All command errors are wrapped in the `CmdError` class which captures relevant details in a single object.
 
@@ -79,6 +78,8 @@ try {
   }
 }
 ```
+
+By combining these primitives in different ways alongside built-in concurrency helpers like `Promise.all()`, `easy-command-runner` makes it easy to run commands.
 
 # Contributing
 
