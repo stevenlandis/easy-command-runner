@@ -303,4 +303,24 @@ describe("cmd", () => {
     expect(err.code).toBe(3);
     expect(err.stderr).toBe("This is an error\n");
   });
+
+  it("text to file", async () => {
+    let filePath = path.join(testFolder, getUniqueName());
+    await cmd.text("hi there").toFile(filePath);
+
+    expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
+      "hi there"
+    );
+  });
+
+  it("text to command", async () => {
+    let resp = await cmd.text("bananas").pipe("cat").get();
+    expect(resp).toBe("bananas");
+  });
+
+  it("text to command to command", async () => {
+    expect(await cmd.text("apples").pipe("cat").pipe("cat").get()).toBe(
+      "apples"
+    );
+  });
 });

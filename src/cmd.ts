@@ -11,6 +11,7 @@ export function cmd(...input: CmdInput): Cmd {
 }
 
 cmd.file = (path: string) => new CmdFile(path);
+cmd.text = (text: string) => new CmdString(text);
 
 type CmdInput = string[] | [{ cmd: string[]; cwd?: string }];
 function parseCommandInput(input: CmdInput): {
@@ -73,6 +74,27 @@ class CmdFile extends CmdSource {
   }
 }
 
+class CmdStringStream {
+  constructor(public text: string) {}
+
+  pipe(outStream: any) {
+    outStream.write(this.text);
+    outStream.end();
+  }
+}
+
+class CmdString extends CmdSource {
+  constructor(public text: string) {
+    super();
+  }
+
+  async getStream(): Promise<{ stream: any }> {
+    return {
+      stream: new CmdStringStream(this.text),
+    };
+  }
+}
+
 class Cmd extends CmdSource {
   command: string[];
   cwd?: string;
@@ -94,30 +116,39 @@ class Cmd extends CmdSource {
   }
 
   async getStream(): Promise<{ stream: any }> {
-    let stdin = await this.source?.getStream();
-
-    let proc = child_process.spawn(this.command[0], this.command.slice(1), {
-      cwd: this.cwd,
-      stdio: [stdin?.stream ?? "pipe", "pipe", "pipe"],
-    });
-
-    let stderrTxt = "";
-    proc.stderr.on("data", (chunk) => {
-      stderrTxt += chunk;
-    });
+    let proc = (await this.baseRun()).proc;
 
     return {
       stream: proc.stdout,
     };
   }
 
-  async get() {
-    let stdin = await this.source?.getStream();
+  async baseRun() {
+    let sourceStream = await this.source?.getStream();
+    let stdin =
+      sourceStream === undefined
+        ? "pipe"
+        : sourceStream.stream instanceof CmdStringStream
+        ? "pipe"
+        : sourceStream.stream;
 
     let proc = child_process.spawn(this.command[0], this.command.slice(1), {
       cwd: this.cwd,
-      stdio: [stdin?.stream ?? "pipe", "pipe", "pipe"],
+      stdio: [stdin, "pipe", "pipe"],
     });
+
+    if (
+      sourceStream !== undefined &&
+      sourceStream.stream instanceof CmdStringStream
+    ) {
+      sourceStream.stream.pipe(proc.stdin);
+    }
+
+    return { proc };
+  }
+
+  async get() {
+    let proc = (await this.baseRun()).proc;
 
     let stdoutTxt = "";
     proc.stdout.on("data", (chunk) => {
