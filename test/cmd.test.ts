@@ -17,6 +17,11 @@ const getUniqueName = (() => {
   return () => `file${count++}`;
 })();
 
+let oldEnvVars = { ...process.env };
+afterEach(() => {
+  process.env = oldEnvVars;
+});
+
 describe("child_process tests", () => {
   it("basic test for ls", async () => {
     let resp = await new Promise<any>((resolve, reject) => {
@@ -338,5 +343,28 @@ describe("cmd", () => {
     expect(cmd("fdsafsadfsdfsa").get()).rejects.toThrow(
       "spawn fdsafsadfsdfsa ENOEN"
     );
+  });
+
+  it("use environment variable", async () => {
+    let program = `
+      console.log(process.env.OUTER_ENV_VAR);
+      console.log(process.env.INNER_ENV_VAR);
+    `;
+
+    process.env.OUTER_ENV_VAR = "outer";
+
+    expect(await cmd.text(program).pipe("node", "-").get()).toBe(
+      "outer\nundefined\n"
+    );
+
+    expect(
+      await cmd
+        .text(program)
+        .pipe({
+          cmd: ["node", "-"],
+          env: { INNER_ENV_VAR: "inner" },
+        })
+        .get()
+    ).toBe("outer\ninner\n");
   });
 });

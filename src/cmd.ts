@@ -7,19 +7,23 @@ export function cmd(...input: CmdInput): Cmd {
     command: cmdInput.command,
     cwd: cmdInput.cwd,
     source: undefined,
+    env: cmdInput.env,
   });
 }
 
 cmd.file = (path: string) => new CmdFile(path);
 cmd.text = (text: string) => new CmdString(text);
 
-type CmdInput = string[] | [{ cmd: string[]; cwd?: string }];
+type CmdInput =
+  | string[]
+  | [{ cmd: string[]; cwd?: string; env?: Record<string, string> }];
 function parseCommandInput(input: CmdInput): {
   command: string[];
   cwd?: string;
+  env?: Record<string, string>;
 } {
   if (input.length === 1 && typeof input[0] !== "string") {
-    return { command: input[0].cmd, cwd: input[0].cwd };
+    return { command: input[0].cmd, cwd: input[0].cwd, env: input[0].env };
   }
   return {
     command: input as string[],
@@ -35,6 +39,7 @@ abstract class CmdSource {
       command: cmdInput.command,
       cwd: cmdInput.cwd,
       source: this,
+      env: cmdInput.env,
     });
   }
 
@@ -99,20 +104,24 @@ class Cmd extends CmdSource {
   command: string[];
   cwd?: string;
   source?: CmdSource;
+  env?: Record<string, string>;
 
   constructor({
     command,
     cwd,
     source,
+    env,
   }: {
     command: string[];
     cwd: string | undefined;
     source: CmdSource | undefined;
+    env: Record<string, string> | undefined;
   }) {
     super();
     this.command = command;
     this.cwd = cwd;
     this.source = source;
+    this.env = env;
   }
 
   async getStream(): Promise<{ stream: any }> {
@@ -138,6 +147,8 @@ class Cmd extends CmdSource {
     let proc = child_process.spawn(this.command[0], this.command.slice(1), {
       cwd: this.cwd,
       stdio: [stdin, stdout, stderr],
+      env:
+        this.env === undefined ? process.env : { ...process.env, ...this.env },
     });
 
     if (
