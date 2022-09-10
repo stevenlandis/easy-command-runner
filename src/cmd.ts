@@ -215,15 +215,3 @@ type StdoutType =
   | { type: "stream"; stream: any }
   | { type: "pipe"; pipe: any }
   | { type: "ignore" };
-
-function baseRunCmd(
-  command: string[],
-  cwd: string | undefined,
-  stdin: StdinType,
-  stdout: StdoutType
-) {
-  let proc = child_process.spawn(command[0], command.slice(1), {
-    cwd,
-    // stdio: [finalStdin, finalStdout, finalStderr]
-  });
-}
