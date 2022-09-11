@@ -1,5 +1,6 @@
 import * as child_process from "child_process";
 import * as fs from "fs";
+import { Stream } from "stream";
 
 export function cmd(...input: CmdInput): Cmd {
   let cmdInput = parseCommandInput(input);
@@ -31,7 +32,7 @@ function parseCommandInput(input: CmdInput): {
 }
 
 abstract class CmdSource {
-  abstract getStream(): Promise<{ stream: any }>;
+  abstract getStream(): Promise<{ stream: Stream }>;
 
   pipe(...input: CmdInput) {
     let cmdInput = parseCommandInput(input);
@@ -135,9 +136,11 @@ class Cmd extends CmdSource {
   async baseRun({
     stdout = "pipe",
     stderr = "pipe",
-  }: { stdout?: "pipe" | any; stderr?: "pipe" | any } = {}) {
+  }: { stdout?: "pipe" | Stream; stderr?: "pipe" | Stream } = {}): Promise<{
+    proc: child_process.ChildProcess;
+  }> {
     let sourceStream = await this.source?.getStream();
-    let stdin =
+    let stdin: "pipe" | Stream =
       sourceStream === undefined
         ? "pipe"
         : sourceStream.stream instanceof CmdStringStream
@@ -184,12 +187,12 @@ class Cmd extends CmdSource {
     let proc = (await this.baseRun()).proc;
 
     let stdoutTxt = "";
-    proc.stdout.on("data", (chunk) => {
+    proc.stdout!.on("data", (chunk) => {
       stdoutTxt += chunk;
     });
 
     let stderrTxt = "";
-    proc.stderr.on("data", (chunk) => {
+    proc.stderr!.on("data", (chunk) => {
       stderrTxt += chunk;
     });
 
