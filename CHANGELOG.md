@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Remove stderr from `CmdErr` to prevent accidentally capturing stderr when not needed.
+
 ## [0.0.0] - 2022-09-08
 
 ### Added

@@ -1,6 +1,6 @@
 import * as child_process from "child_process";
 import * as fs from "fs";
-import { Stream } from "stream";
+import { Stream, Writable } from "stream";
 
 export function cmd(...input: CmdInput): Cmd {
   let cmdInput = parseCommandInput(input);
@@ -32,7 +32,7 @@ function parseCommandInput(input: CmdInput): {
 }
 
 abstract class CmdSource {
-  abstract getStream(): Promise<{ stream: Stream }>;
+  abstract getStreams(opts: GetStreamsInput): Promise<GetStreamsOutput>;
 
   pipe(...input: CmdInput) {
     let cmdInput = parseCommandInput(input);
@@ -46,8 +46,13 @@ abstract class CmdSource {
 
   async toFile(path: string) {
     let writeStream = fs.createWriteStream(path);
-    let input = await this.getStream();
-    input.stream.pipe(writeStream);
+
+    let streams = await this.getStreams({
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    streams.stdout.pipe(writeStream);
     return new Promise<void>((resolve, reject) => {
       writeStream.on("error", (err) => {
         reject(err);
@@ -59,12 +64,22 @@ abstract class CmdSource {
   }
 }
 
+interface GetStreamsInput {
+  stdin: Stream | "ignore";
+  stdout: Stream | "pipe";
+  stderr: Stream | "ignore";
+}
+interface GetStreamsOutput {
+  stdout: Stream | SyntheticReadStream;
+  stderr?: Stream | undefined;
+}
+
 class CmdFile extends CmdSource {
   constructor(public path: string) {
     super();
   }
 
-  async getStream(): Promise<{ stream: any }> {
+  async getStreams(opts: GetStreamsInput): Promise<GetStreamsOutput> {
     let readStream = fs.createReadStream(this.path);
     await new Promise<void>((resolve, reject) => {
       readStream.on("open", () => {
@@ -75,17 +90,22 @@ class CmdFile extends CmdSource {
       });
     });
     return {
-      stream: readStream,
+      stdout: readStream,
     };
   }
 }
 
-class CmdStringStream {
-  constructor(public text: string) {}
+abstract class SyntheticReadStream {
+  abstract pipe(outStream: Writable): void;
+}
 
-  pipe(outStream: any) {
-    outStream.write(this.text);
-    outStream.end();
+class CmdStringStream extends SyntheticReadStream {
+  constructor(public text: string) {
+    super();
+  }
+
+  pipe(outStream: Writable) {
+    outStream.end(this.text);
   }
 }
 
@@ -94,9 +114,9 @@ class CmdString extends CmdSource {
     super();
   }
 
-  async getStream(): Promise<{ stream: any }> {
+  async getStreams(opts: GetStreamsInput): Promise<GetStreamsOutput> {
     return {
-      stream: new CmdStringStream(this.text),
+      stdout: new CmdStringStream(this.text),
     };
   }
 }
@@ -125,27 +145,27 @@ class Cmd extends CmdSource {
     this.env = env;
   }
 
-  async getStream(): Promise<{ stream: any }> {
-    let proc = (await this.baseRun()).proc;
+  async getStreams(input: GetStreamsInput): Promise<GetStreamsOutput> {
+    let proc = (await this.baseRun(input)).proc;
 
     return {
-      stream: proc.stdout,
+      stdout: proc.stdout!,
     };
   }
 
-  async baseRun({
-    stdout = "pipe",
-    stderr = "pipe",
-  }: { stdout?: "pipe" | Stream; stderr?: "pipe" | Stream } = {}): Promise<{
+  async baseRun(input: GetStreamsInput): Promise<{
     proc: child_process.ChildProcess;
   }> {
-    let sourceStream = await this.source?.getStream();
-    let stdin: "pipe" | Stream =
-      sourceStream === undefined
+    let source = await this.source?.getStreams(input);
+    let stdin: "pipe" | "ignore" | Stream =
+      source === undefined
+        ? input.stdin
+        : source.stdout instanceof SyntheticReadStream
         ? "pipe"
-        : sourceStream.stream instanceof CmdStringStream
-        ? "pipe"
-        : sourceStream.stream;
+        : source.stdout;
+
+    let stdout = input.stdout;
+    let stderr = input.stderr;
 
     let proc = child_process.spawn(this.command[0], this.command.slice(1), {
       cwd: this.cwd,
@@ -154,19 +174,31 @@ class Cmd extends CmdSource {
         this.env === undefined ? process.env : { ...process.env, ...this.env },
     });
 
-    if (
-      sourceStream !== undefined &&
-      sourceStream.stream instanceof CmdStringStream
-    ) {
-      sourceStream.stream.pipe(proc.stdin);
+    if (source !== undefined && source.stdout instanceof CmdStringStream) {
+      source.stdout.pipe(proc.stdin!);
     }
 
     return { proc };
   }
 
+  /**
+   * Runs a command using streams from the current process:
+   * - stdin -> process.stdin
+   * - stdout -> process.stdout
+   * - stderr -> process.stderr
+   *
+   * ```ts
+   * // Example
+   * await cmd('vim').run();
+   * ```
+   */
   async run() {
     let proc = (
-      await this.baseRun({ stdout: process.stdout, stderr: process.stderr })
+      await this.baseRun({
+        stdin: process.stdin,
+        stdout: process.stdout,
+        stderr: process.stderr,
+      })
     ).proc;
 
     await new Promise<void>((resolve, reject) => {
@@ -177,23 +209,32 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code, ""));
+          reject(new CmdError(code));
         }
       });
     });
   }
 
+  /**
+   * Runs the command and returns stdout as a utf8-encoded string;
+   *
+   * ```ts
+   * // Example
+   * let files = await cmd('ls').get();
+   * ```
+   */
   async get() {
-    let proc = (await this.baseRun()).proc;
+    let proc = (
+      await this.baseRun({
+        stdin: "ignore",
+        stdout: "pipe",
+        stderr: "ignore",
+      })
+    ).proc;
 
     let stdoutTxt = "";
     proc.stdout!.on("data", (chunk) => {
       stdoutTxt += chunk;
-    });
-
-    let stderrTxt = "";
-    proc.stderr!.on("data", (chunk) => {
-      stderrTxt += chunk;
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -204,7 +245,7 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code, stderrTxt));
+          reject(new CmdError(code));
         }
       });
     });
@@ -214,8 +255,8 @@ class Cmd extends CmdSource {
 }
 
 export class CmdError extends Error {
-  constructor(public code: number | null, public stderr: string) {
-    super(`Command failed with code ${code}. Stderr:\n${stderr}`);
+  constructor(public code: number | null) {
+    super(`Command failed with code ${code}`);
     Object.setPrototypeOf(this, CmdError.prototype);
   }
 }

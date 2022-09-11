@@ -260,9 +260,7 @@ describe("cmd", () => {
   });
 
   it("error while running command", async () => {
-    await expect(cmd("node", "test/fail.js").get()).rejects.toThrow(
-      "This is an error"
-    );
+    await expect(cmd("node", "test/fail.js").get()).rejects.toThrow("code 3");
   });
 
   it("error while running piped command", async () => {
@@ -306,7 +304,6 @@ describe("cmd", () => {
 
     expect(err).toBeInstanceOf(CmdError);
     expect(err.code).toBe(3);
-    expect(err.stderr).toBe("This is an error\n");
   });
 
   it("text to file", async () => {
