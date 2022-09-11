@@ -2,6 +2,8 @@
 
 This is the way you've always wanted to run shell commands in nodejs.
 
+This library is currently under active development so there may be breaking changes in the API, especially around how stdin, stdout and stderr are handled.
+
 ```ts
 import { cmd } from "easy-command-runner";
 
