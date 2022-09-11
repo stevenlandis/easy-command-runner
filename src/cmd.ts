@@ -66,7 +66,7 @@ abstract class CmdSource {
 
 interface GetStreamsInput {
   stdin: Stream | "ignore";
-  stdout: Stream | "pipe";
+  stdout: Stream | "pipe" | "ignore";
   stderr: Stream | "ignore";
 }
 interface GetStreamsOutput {
@@ -156,7 +156,11 @@ class Cmd extends CmdSource {
   async baseRun(input: GetStreamsInput): Promise<{
     proc: child_process.ChildProcess;
   }> {
-    let source = await this.source?.getStreams(input);
+    let source = await this.source?.getStreams({
+      stdin: input.stdin,
+      stdout: "pipe",
+      stderr: input.stderr,
+    });
     let stdin: "pipe" | "ignore" | Stream =
       source === undefined
         ? input.stdin
@@ -192,12 +196,12 @@ class Cmd extends CmdSource {
    * await cmd('vim').run();
    * ```
    */
-  async run() {
+  async run({ silent }: { silent?: boolean } = {}) {
     let proc = (
       await this.baseRun({
-        stdin: process.stdin,
-        stdout: process.stdout,
-        stderr: process.stderr,
+        stdin: silent ? "ignore" : process.stdin,
+        stdout: silent ? "ignore" : process.stdout,
+        stderr: silent ? "ignore" : process.stderr,
       })
     ).proc;
 
@@ -260,13 +264,3 @@ export class CmdError extends Error {
     Object.setPrototypeOf(this, CmdError.prototype);
   }
 }
-
-type StdinType =
-  | { type: "string"; value: string }
-  | { type: "stream"; stream: { fd: null | number } }
-  | { type: "ignore" };
-
-type StdoutType =
-  | { type: "stream"; stream: any }
-  | { type: "pipe"; pipe: any }
-  | { type: "ignore" };

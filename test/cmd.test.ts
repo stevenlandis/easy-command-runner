@@ -206,30 +206,6 @@ describe("child_process tests", () => {
       "things and stuff"
     );
   });
-
-  // it("error in upstream command", async () => {
-  //   let proc0 = child_process.spawn("node", ["test/fail.js"]);
-  //   let proc1 = child_process.spawn("cat", {
-  //     stdio: [proc0.stdout, "pipe", "pipe"],
-  //   });
-
-  //   proc0.stderr.on("data", (chunk) => {
-  //     console.log("" + chunk);
-  //   });
-  //   proc0.on("close", (code) => {
-  //     console.log("finished with code", code);
-  //   });
-
-  //   let resp = await new Promise<any>((resolve) => {
-  //     proc1.on("close", (code) => {
-  //       resolve({ code });
-  //     });
-  //   });
-
-  //   proc0.stdout.destroy();
-
-  //   expect(resp).toStrictEqual({ code: 0 });
-  // });
 });
 
 describe("cmd", () => {
@@ -326,12 +302,8 @@ describe("cmd", () => {
     );
   });
 
-  it("run command", async () => {
-    await cmd("echo", "hey").run();
-  });
-
   it("run invalid command", async () => {
-    expect(cmd("fhsjakfhsadkjl").run()).rejects.toThrow(
+    expect(cmd("fhsjakfhsadkjl").get()).rejects.toThrow(
       "spawn fhsjakfhsadkjl ENOEN"
     );
   });
@@ -363,5 +335,32 @@ describe("cmd", () => {
         })
         .get()
     ).toBe("outer\ninner\n");
+  });
+});
+
+describe("subprocess tests", () => {
+  jest.setTimeout(10000);
+  beforeAll(async () => {
+    await cmd("yarn", "build").run({ silent: true });
+  });
+
+  it("cmd.run() correctly uses stdin", async () => {
+    let scriptPath = "test/test-scripts/cmd-runcorrectly-uses-stdin.js";
+    expect(
+      await cmd.text("apple\nbanana\n").pipe("node", scriptPath).get()
+    ).toBe(
+      [
+        "apple",
+        "apple",
+        "apple",
+        "apple",
+        "banana",
+        "banana",
+        "banana",
+        "banana",
+      ]
+        .map((name) => `${name} there\n`)
+        .join("")
+    );
   });
 });
