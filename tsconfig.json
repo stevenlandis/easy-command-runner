@@ -4,7 +4,8 @@
     "declaration": true,
     "outDir": "build",
     "module": "commonjs",
-    "target": "es2015"
+    "target": "es2015",
+    "emitDeclarationOnly": true
   },
   "include": ["src/**/*"]
 }

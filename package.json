@@ -9,7 +9,9 @@
     "/build"
   ],
   "scripts": {
-    "build": "rm -rf build && tsc",
+    "build-types": "tsc",
+    "build-js-bundle": "rm -rf build && node esbuild.js",
+    "build-release": "yarn build-js-bundle && yarn build-types",
     "test": "jest"
   },
   "devDependencies": {

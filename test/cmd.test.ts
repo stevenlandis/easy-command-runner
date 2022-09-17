@@ -338,10 +338,9 @@ describe("cmd", () => {
   });
 });
 
-describe.skip("subprocess tests", () => {
-  jest.setTimeout(10000);
+describe("subprocess tests", () => {
   beforeAll(async () => {
-    await cmd("yarn", "build").runSilent();
+    await cmd("yarn", "build-js-bundle").runSilent();
   });
 
   it("cmd.run() correctly uses stdin", async () => {
