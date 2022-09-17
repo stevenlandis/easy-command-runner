@@ -338,10 +338,10 @@ describe("cmd", () => {
   });
 });
 
-describe("subprocess tests", () => {
+describe.skip("subprocess tests", () => {
   jest.setTimeout(10000);
   beforeAll(async () => {
-    await cmd("yarn", "build").run({ silent: true });
+    await cmd("yarn", "build").runSilent();
   });
 
   it("cmd.run() correctly uses stdin", async () => {

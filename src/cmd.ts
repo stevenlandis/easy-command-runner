@@ -196,12 +196,44 @@ class Cmd extends CmdSource {
    * await cmd('vim').run();
    * ```
    */
-  async run({ silent }: { silent?: boolean } = {}) {
+  async run() {
     let proc = (
       await this.baseRun({
-        stdin: silent ? "ignore" : process.stdin,
-        stdout: silent ? "ignore" : process.stdout,
-        stderr: silent ? "ignore" : process.stderr,
+        stdin: process.stdin,
+        stdout: process.stdout,
+        stderr: process.stderr,
+      })
+    ).proc;
+
+    await new Promise<void>((resolve, reject) => {
+      proc.on("error", (err) => {
+        reject(err);
+      });
+      proc.on("close", async (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new CmdError(code));
+        }
+      });
+    });
+  }
+
+  /**
+   * Runs a command that ignores stdin, stdout and stderr.
+   * This is useful for running build commands that should always succeed.
+   *
+   * ```ts
+   * // Example
+   * await cmd('yarn', 'build').runSilent();
+   * ```
+   */
+  async runSilent() {
+    let proc = (
+      await this.baseRun({
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore",
       })
     ).proc;
 

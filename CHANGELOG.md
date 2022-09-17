@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove stderr from `CmdErr` to prevent accidentally capturing stderr when not needed.
 
+### Added
+
+- Add Cmd.runSilent() to run commands without stdin, stdout or stderr.
+
 ## [0.0.0] - 2022-09-08
 
 ### Added
