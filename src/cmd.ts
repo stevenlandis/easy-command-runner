@@ -213,7 +213,7 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code));
+          reject(new CmdError(code, this.command));
         }
       });
     });
@@ -245,7 +245,7 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code));
+          reject(new CmdError(code, this.command));
         }
       });
     });
@@ -279,7 +279,7 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code));
+          reject(new CmdError(code, this.command));
         }
       });
     });
@@ -315,7 +315,7 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code));
+          reject(new CmdError(code, this.command));
         }
       });
     });
@@ -358,7 +358,7 @@ class Cmd extends CmdSource {
         if (code === 0) {
           resolve();
         } else {
-          reject(new CmdError(code));
+          reject(new CmdError(code, this.command));
         }
       });
     });
@@ -368,8 +368,8 @@ class Cmd extends CmdSource {
 }
 
 export class CmdError extends Error {
-  constructor(public code: number | null) {
-    super(`Command failed with code ${code}`);
+  constructor(public code: number | null, public command: string[]) {
+    super(`Command ${command} failed with code ${code}`);
     Object.setPrototypeOf(this, CmdError.prototype);
   }
 }

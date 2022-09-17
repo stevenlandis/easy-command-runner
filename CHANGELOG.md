@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `Cmd.runSilent()` to run commands without stdin, stdout or stderr.
 - Add `Cmd.getAll()` to capture stdout and stderr as strings.
 - Add `Cmd.runDebug()` to run commands and forward stdout + stderr.
+- Add `CmdError.command` to more easily see which command failed.
 
 ## [0.0.0] - 2022-09-08
 

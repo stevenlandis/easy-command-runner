@@ -94,6 +94,7 @@ describe("cmd", () => {
 
     expect(err).toBeInstanceOf(CmdError);
     expect(err.code).toBe(3);
+    expect(err.command).toStrictEqual(["node", "test/fail.js"]);
   });
 
   it("text to file", async () => {
