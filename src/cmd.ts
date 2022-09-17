@@ -369,7 +369,7 @@ class Cmd extends CmdSource {
 
 export class CmdError extends Error {
   constructor(public code: number | null, public command: string[]) {
-    super(`Command ${command} failed with code ${code}`);
+    super(`Command ${JSON.stringify(command)} failed with code ${code}`);
     Object.setPrototypeOf(this, CmdError.prototype);
   }
 }
