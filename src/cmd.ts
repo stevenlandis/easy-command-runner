@@ -67,7 +67,7 @@ abstract class CmdSource {
 interface GetStreamsInput {
   stdin: Stream | "ignore";
   stdout: Stream | "pipe" | "ignore";
-  stderr: Stream | "ignore";
+  stderr: Stream | "pipe" | "ignore";
 }
 interface GetStreamsOutput {
   stdout: Stream | SyntheticReadStream;
@@ -252,7 +252,41 @@ class Cmd extends CmdSource {
   }
 
   /**
-   * Runs the command and returns stdout as a utf8-encoded string;
+   * Runs a command that ignores stdin and forwards stdout and stderr.
+   * This is useful for running commands where you want to see the complete output
+   * in case something goes wrong.
+   *
+   * ```ts
+   * // Example
+   * let containerId = await cmd('docker', 'build', '.').get();
+   * await cmd('docker', 'run', containerId).runDebug();
+   * ```
+   */
+  async runDebug() {
+    let proc = (
+      await this.baseRun({
+        stdin: "ignore",
+        stdout: process.stdout,
+        stderr: process.stderr,
+      })
+    ).proc;
+
+    await new Promise<void>((resolve, reject) => {
+      proc.on("error", (err) => {
+        reject(err);
+      });
+      proc.on("close", async (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new CmdError(code));
+        }
+      });
+    });
+  }
+
+  /**
+   * Runs the command and returns stdout as a utf8-encoded string.
    *
    * ```ts
    * // Example
@@ -287,6 +321,49 @@ class Cmd extends CmdSource {
     });
 
     return stdoutTxt;
+  }
+
+  /**
+   * Runs the command and returns stdout and stderr as utf8-encoded strings.
+   *
+   * ```ts
+   * // Example
+   * let { stdout, stderr } = await cmd('docker', 'build').getAll();
+   * ```
+   */
+  async getAll(): Promise<{ stdout: string; stderr: string }> {
+    let proc = (
+      await this.baseRun({
+        stdin: "ignore",
+        stdout: "pipe",
+        stderr: "pipe",
+      })
+    ).proc;
+
+    let stdoutTxt = "";
+    proc.stdout!.on("data", (chunk) => {
+      stdoutTxt += chunk;
+    });
+
+    let stderrTxt = "";
+    proc.stderr!.on("data", (chunk) => {
+      stderrTxt += chunk;
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      proc.on("error", (err) => {
+        reject(err);
+      });
+      proc.on("close", async (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new CmdError(code));
+        }
+      });
+    });
+
+    return { stdout: stdoutTxt, stderr: stderrTxt };
   }
 }
 

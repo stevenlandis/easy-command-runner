@@ -150,6 +150,18 @@ describe("cmd", () => {
         .get()
     ).toBe("outer\ninner\n");
   });
+
+  it("getAll", async () => {
+    let program = `
+      console.log('hey from stdout');
+      console.error('hey from stderr');
+    `;
+
+    expect(await cmd.text(program).pipe("node", "-").getAll()).toStrictEqual({
+      stdout: "hey from stdout\n",
+      stderr: "hey from stderr\n",
+    });
+  });
 });
 
 describe("subprocess tests", () => {
@@ -175,6 +187,14 @@ describe("subprocess tests", () => {
         .map((name) => `${name} there\n`)
         .join("")
     );
+  });
+
+  it("cmd.runDebug() correctly forwards stdout and stderr", async () => {
+    let scriptPath = "test/test-scripts/cmd-runDebug.js";
+    expect(await cmd("node", scriptPath).getAll()).toStrictEqual({
+      stdout: "this is from stdout\n",
+      stderr: "this is from stderr\n",
+    });
   });
 });
 
@@ -361,5 +381,30 @@ describe("child_process tests", () => {
     expect(await fs.promises.readFile(outputPath, { encoding: "utf8" })).toBe(
       "things and stuff"
     );
+  });
+
+  it("combine stdout and stderr", async () => {
+    let proc = child_process.spawn("node", ["-"]);
+    proc.stdin.end(`
+      console.log('hey from stdout');
+      console.log('hey from stderr');
+    `);
+
+    let out = "";
+    proc.stdout.on("data", (chunk) => {
+      out += chunk;
+    });
+    proc.stderr.on("data", (chunk) => {
+      out += chunk;
+    });
+
+    let code = await new Promise((resolve) => {
+      proc.on("exit", (code) => {
+        resolve(code);
+      });
+    });
+    expect(code).toBe(0);
+
+    expect(out).toBe("hey from stdout\nhey from stderr\n");
   });
 });
