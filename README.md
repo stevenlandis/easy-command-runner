@@ -60,7 +60,7 @@ You can pipe on string literals to easily get data into processes.
 ```ts
 let images = await fetch_text("https://example.com/images_urls.txt");
 await cmd
-  .text(await images)
+  .text(images)
   .pipe("grep", "fruit.*\\.png")
   .toFile("fruit_image_urls.txt");
 ```
