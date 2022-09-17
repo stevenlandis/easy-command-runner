@@ -1,7 +1,7 @@
 {
   "name": "easy-command-runner",
   "license": "MIT",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "The way you've always wanted to to call commands from nodejs.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
