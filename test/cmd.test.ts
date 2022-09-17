@@ -22,6 +22,162 @@ afterEach(() => {
   process.env = oldEnvVars;
 });
 
+describe("cmd", () => {
+  it("run basic command", async () => {
+    let out = await cmd("echo", "hey").get();
+    expect(out).toBe("hey\n");
+  });
+
+  it("basic pipe", async () => {
+    let out = await cmd("echo", "hi").pipe("cat").pipe("cat").get();
+    expect(out).toBe("hi\n");
+  });
+
+  it("pipe from file", async () => {
+    let filePath = path.join(testFolder, getUniqueName());
+    await fs.promises.writeFile(filePath, "some text\nsome more text", {
+      encoding: "utf8",
+    });
+    let out = await cmd.file(filePath).pipe("cat").get();
+    expect(out).toBe("some text\nsome more text");
+  });
+
+  it("error on pipe from unknown file", async () => {
+    let filePath = path.join(testFolder, "unknownFile");
+    await expect(cmd.file(filePath).pipe("cat").get()).rejects.toThrow(
+      "ENOENT: no such file or directory"
+    );
+  });
+
+  it("error while running command", async () => {
+    await expect(cmd("node", "test/fail.js").get()).rejects.toThrow("code 3");
+  });
+
+  it("error while running piped command", async () => {
+    let out = await cmd("node", "test/fail.js").pipe("cat").get();
+    expect(out).toBe("");
+  });
+
+  it("pipe file to file", async () => {
+    let inputPath = path.join(testFolder, getUniqueName());
+    let outputPath = path.join(testFolder, getUniqueName());
+    await fs.promises.writeFile(inputPath, "things and stuff", {
+      encoding: "utf8",
+    });
+
+    await cmd.file(inputPath).toFile(outputPath);
+
+    expect(await fs.promises.readFile(inputPath, { encoding: "utf8" })).toBe(
+      "things and stuff"
+    );
+    expect(await fs.promises.readFile(outputPath, { encoding: "utf8" })).toBe(
+      "things and stuff"
+    );
+  });
+
+  it("pipe command to file", async () => {
+    let filePath = path.join(testFolder, getUniqueName());
+    await cmd("echo", "fruit").pipe("cat").toFile(filePath);
+
+    expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
+      "fruit\n"
+    );
+  });
+
+  it("catch CmdError directly", async () => {
+    let err!: CmdError;
+    try {
+      await cmd("node", "test/fail.js").get();
+    } catch (_err: any) {
+      err = _err;
+    }
+
+    expect(err).toBeInstanceOf(CmdError);
+    expect(err.code).toBe(3);
+  });
+
+  it("text to file", async () => {
+    let filePath = path.join(testFolder, getUniqueName());
+    await cmd.text("hi there").toFile(filePath);
+
+    expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
+      "hi there"
+    );
+  });
+
+  it("text to command", async () => {
+    let resp = await cmd.text("bananas").pipe("cat").get();
+    expect(resp).toBe("bananas");
+  });
+
+  it("text to command to command", async () => {
+    expect(await cmd.text("apples").pipe("cat").pipe("cat").get()).toBe(
+      "apples"
+    );
+  });
+
+  it("run invalid command", async () => {
+    expect(cmd("fhsjakfhsadkjl").get()).rejects.toThrow(
+      "spawn fhsjakfhsadkjl ENOEN"
+    );
+  });
+
+  it("get invalid command", async () => {
+    expect(cmd("fdsafsadfsdfsa").get()).rejects.toThrow(
+      "spawn fdsafsadfsdfsa ENOEN"
+    );
+  });
+
+  it("use environment variable", async () => {
+    let program = `
+      console.log(process.env.OUTER_ENV_VAR);
+      console.log(process.env.INNER_ENV_VAR);
+    `;
+
+    process.env.OUTER_ENV_VAR = "outer";
+
+    expect(await cmd.text(program).pipe("node", "-").get()).toBe(
+      "outer\nundefined\n"
+    );
+
+    expect(
+      await cmd
+        .text(program)
+        .pipe({
+          cmd: ["node", "-"],
+          env: { INNER_ENV_VAR: "inner" },
+        })
+        .get()
+    ).toBe("outer\ninner\n");
+  });
+});
+
+describe("subprocess tests", () => {
+  beforeAll(async () => {
+    await cmd("yarn", "build-js-bundle").runSilent();
+  });
+
+  it("cmd.run() correctly uses stdin", async () => {
+    let scriptPath = "test/test-scripts/cmd-runcorrectly-uses-stdin.js";
+    expect(
+      await cmd.text("apple\nbanana\n").pipe("node", scriptPath).get()
+    ).toBe(
+      [
+        "apple",
+        "apple",
+        "apple",
+        "apple",
+        "banana",
+        "banana",
+        "banana",
+        "banana",
+      ]
+        .map((name) => `${name} there\n`)
+        .join("")
+    );
+  });
+});
+
 describe("child_process tests", () => {
   it("basic test for ls", async () => {
     let resp = await new Promise<any>((resolve, reject) => {
@@ -204,162 +360,6 @@ describe("child_process tests", () => {
     );
     expect(await fs.promises.readFile(outputPath, { encoding: "utf8" })).toBe(
       "things and stuff"
-    );
-  });
-});
-
-describe("cmd", () => {
-  it("run basic command", async () => {
-    let out = await cmd("echo", "hey").get();
-    expect(out).toBe("hey\n");
-  });
-
-  it("basic pipe", async () => {
-    let out = await cmd("echo", "hi").pipe("cat").pipe("cat").get();
-    expect(out).toBe("hi\n");
-  });
-
-  it("pipe from file", async () => {
-    let filePath = path.join(testFolder, getUniqueName());
-    await fs.promises.writeFile(filePath, "some text\nsome more text", {
-      encoding: "utf8",
-    });
-    let out = await cmd.file(filePath).pipe("cat").get();
-    expect(out).toBe("some text\nsome more text");
-  });
-
-  it("error on pipe from unknown file", async () => {
-    let filePath = path.join(testFolder, "unknownFile");
-    await expect(cmd.file(filePath).pipe("cat").get()).rejects.toThrow(
-      "ENOENT: no such file or directory"
-    );
-  });
-
-  it("error while running command", async () => {
-    await expect(cmd("node", "test/fail.js").get()).rejects.toThrow("code 3");
-  });
-
-  it("error while running piped command", async () => {
-    let out = await cmd("node", "test/fail.js").pipe("cat").get();
-    expect(out).toBe("");
-  });
-
-  it("pipe file to file", async () => {
-    let inputPath = path.join(testFolder, getUniqueName());
-    let outputPath = path.join(testFolder, getUniqueName());
-    await fs.promises.writeFile(inputPath, "things and stuff", {
-      encoding: "utf8",
-    });
-
-    await cmd.file(inputPath).toFile(outputPath);
-
-    expect(await fs.promises.readFile(inputPath, { encoding: "utf8" })).toBe(
-      "things and stuff"
-    );
-    expect(await fs.promises.readFile(outputPath, { encoding: "utf8" })).toBe(
-      "things and stuff"
-    );
-  });
-
-  it("pipe command to file", async () => {
-    let filePath = path.join(testFolder, getUniqueName());
-    await cmd("echo", "fruit").pipe("cat").toFile(filePath);
-
-    expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
-      "fruit\n"
-    );
-  });
-
-  it("catch CmdError directly", async () => {
-    let err!: CmdError;
-    try {
-      await cmd("node", "test/fail.js").get();
-    } catch (_err: any) {
-      err = _err;
-    }
-
-    expect(err).toBeInstanceOf(CmdError);
-    expect(err.code).toBe(3);
-  });
-
-  it("text to file", async () => {
-    let filePath = path.join(testFolder, getUniqueName());
-    await cmd.text("hi there").toFile(filePath);
-
-    expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
-      "hi there"
-    );
-  });
-
-  it("text to command", async () => {
-    let resp = await cmd.text("bananas").pipe("cat").get();
-    expect(resp).toBe("bananas");
-  });
-
-  it("text to command to command", async () => {
-    expect(await cmd.text("apples").pipe("cat").pipe("cat").get()).toBe(
-      "apples"
-    );
-  });
-
-  it("run invalid command", async () => {
-    expect(cmd("fhsjakfhsadkjl").get()).rejects.toThrow(
-      "spawn fhsjakfhsadkjl ENOEN"
-    );
-  });
-
-  it("get invalid command", async () => {
-    expect(cmd("fdsafsadfsdfsa").get()).rejects.toThrow(
-      "spawn fdsafsadfsdfsa ENOEN"
-    );
-  });
-
-  it("use environment variable", async () => {
-    let program = `
-      console.log(process.env.OUTER_ENV_VAR);
-      console.log(process.env.INNER_ENV_VAR);
-    `;
-
-    process.env.OUTER_ENV_VAR = "outer";
-
-    expect(await cmd.text(program).pipe("node", "-").get()).toBe(
-      "outer\nundefined\n"
-    );
-
-    expect(
-      await cmd
-        .text(program)
-        .pipe({
-          cmd: ["node", "-"],
-          env: { INNER_ENV_VAR: "inner" },
-        })
-        .get()
-    ).toBe("outer\ninner\n");
-  });
-});
-
-describe("subprocess tests", () => {
-  beforeAll(async () => {
-    await cmd("yarn", "build-js-bundle").runSilent();
-  });
-
-  it("cmd.run() correctly uses stdin", async () => {
-    let scriptPath = "test/test-scripts/cmd-runcorrectly-uses-stdin.js";
-    expect(
-      await cmd.text("apple\nbanana\n").pipe("node", scriptPath).get()
-    ).toBe(
-      [
-        "apple",
-        "apple",
-        "apple",
-        "apple",
-        "banana",
-        "banana",
-        "banana",
-        "banana",
-      ]
-        .map((name) => `${name} there\n`)
-        .join("")
     );
   });
 });
