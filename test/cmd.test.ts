@@ -167,7 +167,7 @@ describe("cmd", () => {
 
 describe("subprocess tests", () => {
   beforeAll(async () => {
-    await cmd("yarn", "build-js-bundle").runSilent();
+    await cmd("yarn", "build-js").runSilent();
   });
 
   it("cmd.run() correctly uses stdin", async () => {
