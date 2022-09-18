@@ -166,16 +166,20 @@ describe("cmd", () => {
 });
 
 describe("subprocess tests", () => {
+  // These tests run node scripts against a compiled version of
+  // the library. These are mainly used to test commands that require
+  // stdin since that's hard to do in a normal test.
+
   beforeAll(async () => {
     await cmd("yarn", "build-js").runSilent();
   });
 
-  it("cmd.run() correctly uses stdin", async () => {
+  it("cmd.stdin()....run() correctly uses stdin", async () => {
     let scriptPath = "test/test-scripts/cmd-runcorrectly-uses-stdin.js";
     expect(
-      await cmd.text("apple\nbanana\n").pipe("node", scriptPath).get()
-    ).toBe(
-      [
+      await cmd.text("apple\nbanana\n").pipe("node", scriptPath).getAll()
+    ).toStrictEqual({
+      stdout: [
         "apple",
         "apple",
         "apple",
@@ -186,15 +190,26 @@ describe("subprocess tests", () => {
         "banana",
       ]
         .map((name) => `${name} there\n`)
-        .join("")
-    );
+        .join(""),
+      stderr: "",
+    });
   });
 
-  it("cmd.runDebug() correctly forwards stdout and stderr", async () => {
+  it("cmd.run() correctly forwards stdout and stderr", async () => {
     let scriptPath = "test/test-scripts/cmd-runDebug.js";
     expect(await cmd("node", scriptPath).getAll()).toStrictEqual({
       stdout: "this is from stdout\n",
       stderr: "this is from stderr\n",
+    });
+  });
+
+  it("use cmd.stdin() and cmd.get() together", async () => {
+    let scriptPath = "test/test-scripts/stdin-and-get-together.js";
+    expect(
+      await cmd.text("one\ntwo\n").pipe("node", scriptPath).getAll()
+    ).toStrictEqual({
+      stdout: "",
+      stderr: "result: one there\ntwo there\n\n",
     });
   });
 });

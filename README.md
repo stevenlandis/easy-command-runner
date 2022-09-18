@@ -11,7 +11,7 @@ const fileNames = await cmd("ls").pipe("grep", "src").get();
 
 await cmd.file("data.txt").pipe("grep", "fruit").toFile("output.txt");
 
-await cmd({ cmd: ["yarn", "build"], cwd: "src" });
+await cmd({ cmd: ["yarn", "build"], cwd: "src" }).runSilent();
 
 await cmd
   .text("hi")
@@ -65,9 +65,83 @@ await cmd
   .toFile("fruit_image_urls.txt");
 ```
 
+All `cmd()` and `.pipe()` calls can be called with two syntaxes:
+
+```ts
+// The basic syntax
+await cmd("yarn", "build").run();
+
+// The advanced syntax
+await cmd({
+  cmd: ["yarn", "build"],
+
+  // Set additional environment variables on top of process.env
+  env: { DEBUG: "true" },
+
+  // set the current working directory
+  cwd: "src",
+}).run();
+
+// Commands in the same pipeline can run with different directories and environment variables
+
+await cmd({
+  cmd: ["node", "find-source-files.js"],
+  cwd: "src",
+  env: { LOWERCASE: "yes" },
+})
+  .pipe({
+    cmd: ["yarn", "build-release"],
+    cwd: "dist",
+    env: { DEBUG_LEVEL: "prod" },
+  })
+  .run();
+```
+
+### Pipeline Sources
+
+There are many sources for data to stream into pipelines.
+
+```ts
+// By default, all commands don't have an input:
+await cmd("ls").run();
+
+// get input from process.stdin
+await cmd.stdin().pipe("grep", "fruit").run();
+
+// or from a file
+await cmd.file("foods.txt").pipe("grep", "fruit").run();
+
+// or from a string literal
+await cmd.text("lorem ipsum").pipe("wc", "-c").get();
+```
+
+### Pipeline Runners
+
+Each pipeline object is an immutable object describing a command. Pipelines only run when the final function at the end is run. This final function is called a runner.
+
+```ts
+// define the immutable pipeline object
+let pipeline = cmd.file("foods.txt").pipe("grep", "fruit");
+
+// Run the command and forward stdout and stderr
+await pipeline.run();
+
+// Run the command silently (no stdout and stderr forwarding)
+await pipeline.runSilent();
+
+// Get stdout as a utf8-encoded string
+let outputString = await pipeline.get();
+
+// Get stdout and stderr as utf8-encoded strings
+let { stdout, stderr } = await pipeline.getAll();
+
+// Stream output to a file
+await pipeline.toFile("fruits.txt");
+```
+
 ### Error Handling
 
-All command errors are wrapped in the `CmdError` class which captures relevant details in a single object.
+If the final command in a pipeline throws a nonzero error code, the pipeline will raise a `CmdError` class which captures relevant details in a single object.
 
 ```ts
 import { cmd, CmdError } from "easy-command-runner";
@@ -76,12 +150,10 @@ try {
   await cmd("command-that-fails").run();
 } catch (err: unknown) {
   if (err instanceof CmdError) {
-    console.log(`Failed with code=${err.code} and stderr=${err.stderr}`);
+    console.log(`Failed with code=${err.code}`);
   }
 }
 ```
-
-By combining these primitives in different ways alongside built-in concurrency helpers like `Promise.all()`, `easy-command-runner` makes it easy to run commands.
 
 # Contributing
 

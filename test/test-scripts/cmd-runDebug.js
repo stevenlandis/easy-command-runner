@@ -5,4 +5,4 @@ let program = `
   console.error('this is from stderr');
 `;
 
-cmd.text(program).pipe("node", "-").runDebug();
+cmd.text(program).pipe("node", "-").run();

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Change `Cmd.run()` to not use `process.stdin` by default as input.
+- Remove `Cmd.runDebug()` since it is now identical to `Cmd.run()`.
+
+### Added
+
+- Add `cmd.stdin()`, a source if users want to explicitly opt-in to passing `process.stdin` into their command.
+
 ## [0.0.1] - 2022-09-17
 
 ### Breaking Changes

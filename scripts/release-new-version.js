@@ -28,7 +28,7 @@ async function main() {
   );
 
   await cmd("yarn", "build-release").runDebug();
-  await cmd("npm", "publish").run();
+  await cmd.stdin().pipe("npm", "publish").run();
 
   await cmd(
     "git",

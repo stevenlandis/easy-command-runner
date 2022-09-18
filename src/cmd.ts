@@ -14,6 +14,7 @@ export function cmd(...input: CmdInput): Cmd {
 
 cmd.file = (path: string) => new CmdFile(path);
 cmd.text = (text: string) => new CmdString(text);
+cmd.stdin = () => new CmdStdin();
 
 type CmdInput =
   | string[]
@@ -91,6 +92,14 @@ class CmdFile extends CmdSource {
     });
     return {
       stdout: readStream,
+    };
+  }
+}
+
+class CmdStdin extends CmdSource {
+  async getStreams(opts: GetStreamsInput): Promise<GetStreamsOutput> {
+    return {
+      stdout: process.stdin,
     };
   }
 }
@@ -187,19 +196,20 @@ class Cmd extends CmdSource {
 
   /**
    * Runs a command using streams from the current process:
-   * - stdin -> process.stdin
-   * - stdout -> process.stdout
-   * - stderr -> process.stderr
+   * - stdin -> ignore by default
+   * - stdout -> `process.stdout`
+   * - stderr -> `process.stderr`
    *
    * ```ts
-   * // Example
-   * await cmd('vim').run();
+   * // Examples
+   * await cmd.stdin().('vim').run();
+   * await cmd('yarn', 'build').run();
    * ```
    */
   async run() {
     let proc = (
       await this.baseRun({
-        stdin: process.stdin,
+        stdin: "ignore",
         stdout: process.stdout,
         stderr: process.stderr,
       })
@@ -234,40 +244,6 @@ class Cmd extends CmdSource {
         stdin: "ignore",
         stdout: "ignore",
         stderr: "ignore",
-      })
-    ).proc;
-
-    await new Promise<void>((resolve, reject) => {
-      proc.on("error", (err) => {
-        reject(err);
-      });
-      proc.on("close", async (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new CmdError(code, this.command));
-        }
-      });
-    });
-  }
-
-  /**
-   * Runs a command that ignores stdin and forwards stdout and stderr.
-   * This is useful for running commands where you want to see the complete output
-   * in case something goes wrong.
-   *
-   * ```ts
-   * // Example
-   * let containerId = await cmd('docker', 'build', '.').get();
-   * await cmd('docker', 'run', containerId).runDebug();
-   * ```
-   */
-  async runDebug() {
-    let proc = (
-      await this.baseRun({
-        stdin: "ignore",
-        stdout: process.stdout,
-        stderr: process.stderr,
       })
     ).proc;
 
