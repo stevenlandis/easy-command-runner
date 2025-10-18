@@ -33,20 +33,15 @@ async function main() {
     JSON.stringify({ ...packageJsonObj, version: nextVersion }, null, 2) + "\n"
   );
 
-  await cmd("yarn", "test").run();
-  await cmd("yarn", "build-release").run();
-  await cmd.stdin().pipe("npm", "publish").run();
+  await cmd("yarn test").run();
+  await cmd("yarn build-release").run();
+  await cmd.stdin().pipe("npm publish").run();
 
-  await cmd(
-    "git",
-    "commit",
-    "-am",
-    `release version ${nextVersion}`
-  ).runDebug();
+  await cmd(["git", "commit", "-am", `release version ${nextVersion}`]).run();
   let tagName = `v${nextVersion}`;
-  await cmd("git", "tag", tagName).runDebug();
-  await cmd("git", "push").runDebug();
-  await cmd("git", "push", "origin", tagName);
+  await cmd(["git", "tag", tagName]).runDebug();
+  await cmd("git push").runDebug();
+  await cmd(["git", "push", "origin", tagName]);
 }
 
 main();
