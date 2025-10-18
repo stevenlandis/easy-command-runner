@@ -7,16 +7,16 @@ This library is currently under active development so there may be breaking chan
 ```ts
 import { cmd } from "easy-command-runner";
 
-const fileNames = await cmd("ls").pipe("grep", "src").get();
+const fileNames = await cmd("ls").pipe(["grep", "src"]).get();
 
-await cmd.file("data.txt").pipe("grep", "fruit").toFile("output.txt");
+await cmd.file("data.txt").pipe(["grep", "fruit"]).toFile("output.txt");
 
 await cmd({ cmd: ["yarn", "build"], cwd: "src" }).runSilent();
 
 await cmd
   .text("hi")
-  .pipe("sed", "p;p;p")
-  .pipe("sed", "s/$/ there/")
+  .pipe("sed p;p;p")
+  .pipe(["sed", "s/$/ there/"])
   .toFile("four-greetings.txt");
 ```
 
@@ -34,7 +34,7 @@ There are two parts to a command: the executable and arguments. Each argument in
 // Even though the second argument has a bunch of special
 // characters, it will be interpreted as a string literal.
 // This prevents a whole class of security vulnerabilities.
-await cmd("echo", "$ENV_VAR && ls > some.txt").run();
+await cmd(["echo", "$ENV_VAR && ls > some.txt"]).run();
 
 // prints out "$ENV_VAR && ls > some.txt"
 ```
@@ -44,15 +44,15 @@ To make up for the lack of special operators like the pipe operator, there are f
 ```ts
 // Use the .pipe() method to call a command on the output
 // of the previous command
-let specialLines = await cmd("node", "generate_data.js")
-  .pipe("grep", "special.*txt")
+let specialLines = await cmd(["node", "generate_data.js"])
+  .pipe(["grep", "special.*txt"])
   .get();
 ```
 
 There is first-class support for reading and writing files.
 
 ```ts
-await cmd.file("food.txt").pipe("grep", "fruit").toFile("fruits.txt");
+await cmd.file("food.txt").pipe(["grep", "fruit"]).toFile("fruits.txt");
 ```
 
 You can pipe on string literals to easily get data into processes.
@@ -61,7 +61,7 @@ You can pipe on string literals to easily get data into processes.
 let images = await fetch_text("https://example.com/images_urls.txt");
 await cmd
   .text(images)
-  .pipe("grep", "fruit.*\\.png")
+  .pipe(["grep", "fruit.*\\.png"])
   .toFile("fruit_image_urls.txt");
 ```
 
@@ -69,7 +69,7 @@ All `cmd()` and `.pipe()` calls can be called with two syntaxes:
 
 ```ts
 // The basic syntax
-await cmd("yarn", "build").run();
+await cmd(["yarn", "build"]).run();
 
 // The advanced syntax
 await cmd({
@@ -103,16 +103,16 @@ There are many sources for data to stream into pipelines.
 
 ```ts
 // By default, all commands don't have an input:
-await cmd("ls").run();
+await cmd(["ls"]).run();
 
 // get input from process.stdin
-await cmd.stdin().pipe("grep", "fruit").run();
+await cmd.stdin().pipe(["grep", "fruit"]).run();
 
 // or from a file
-await cmd.file("foods.txt").pipe("grep", "fruit").run();
+await cmd.file("foods.txt").pipe(["grep", "fruit"]).run();
 
 // or from a string literal
-await cmd.text("lorem ipsum").pipe("wc", "-c").get();
+await cmd.text("lorem ipsum").pipe(["wc", "-c"]).get();
 ```
 
 ### Pipeline Runners
@@ -121,7 +121,7 @@ Each pipeline object is an immutable object describing a command. Pipelines only
 
 ```ts
 // define the immutable pipeline object
-let pipeline = cmd.file("foods.txt").pipe("grep", "fruit");
+let pipeline = cmd.file("foods.txt").pipe(["grep", "fruit"]);
 
 // Run the command and forward stdout and stderr
 await pipeline.run();
@@ -147,7 +147,7 @@ If the final command in a pipeline throws a nonzero error code, the pipeline wil
 import { cmd, CmdError } from "easy-command-runner";
 
 try {
-  await cmd("command-that-fails").run();
+  await cmd(["command-that-fails"]).run();
 } catch (err: unknown) {
   if (err instanceof CmdError) {
     console.log(`Failed with code=${err.code}`);
