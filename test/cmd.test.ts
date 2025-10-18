@@ -24,12 +24,17 @@ afterEach(() => {
 
 describe("cmd", () => {
   it("run basic command", async () => {
-    let out = await cmd("echo", "hey").get();
+    let out = await cmd(["echo", "hey"]).get();
     expect(out).toBe("hey\n");
   });
 
+  it("run basic command using shell", async () => {
+    let out = await cmd("echo hey from shell").get();
+    expect(out).toBe("hey from shell\n");
+  });
+
   it("basic pipe", async () => {
-    let out = await cmd("echo", "hi").pipe("cat").pipe("cat").get();
+    let out = await cmd(["echo", "hi"]).pipe("cat").pipe("cat").get();
     expect(out).toBe("hi\n");
   });
 
@@ -50,11 +55,11 @@ describe("cmd", () => {
   });
 
   it("error while running command", async () => {
-    await expect(cmd("node", "test/fail.js").get()).rejects.toThrow("code 3");
+    await expect(cmd(["node", "test/fail.js"]).get()).rejects.toThrow("code 3");
   });
 
   it("error while running piped command", async () => {
-    let out = await cmd("node", "test/fail.js").pipe("cat").get();
+    let out = await cmd(["node", "test/fail.js"]).pipe("cat").get();
     expect(out).toBe("");
   });
 
@@ -77,7 +82,7 @@ describe("cmd", () => {
 
   it("pipe command to file", async () => {
     let filePath = path.join(testFolder, getUniqueName());
-    await cmd("echo", "fruit").pipe("cat").toFile(filePath);
+    await cmd(["echo", "fruit"]).pipe("cat").toFile(filePath);
 
     expect(await fs.promises.readFile(filePath, { encoding: "utf8" })).toBe(
       "fruit\n"
@@ -87,7 +92,7 @@ describe("cmd", () => {
   it("catch CmdError directly", async () => {
     let err!: CmdError;
     try {
-      await cmd("node", "test/fail.js").get();
+      await cmd(["node", "test/fail.js"]).get();
     } catch (_err: any) {
       err = _err;
     }
@@ -118,13 +123,13 @@ describe("cmd", () => {
   });
 
   it("run invalid command", async () => {
-    expect(cmd("fhsjakfhsadkjl").get()).rejects.toThrow(
+    expect(cmd(["fhsjakfhsadkjl"]).get()).rejects.toThrow(
       "spawn fhsjakfhsadkjl ENOEN"
     );
   });
 
   it("get invalid command", async () => {
-    expect(cmd("fdsafsadfsdfsa").get()).rejects.toThrow(
+    expect(cmd(["fdsafsadfsdfsa"]).get()).rejects.toThrow(
       "spawn fdsafsadfsdfsa ENOEN"
     );
   });
@@ -137,7 +142,7 @@ describe("cmd", () => {
 
     process.env.OUTER_ENV_VAR = "outer";
 
-    expect(await cmd.text(program).pipe("node", "-").get()).toBe(
+    expect(await cmd.text(program).pipe(["node", "-"]).get()).toBe(
       "outer\nundefined\n"
     );
 
@@ -158,7 +163,7 @@ describe("cmd", () => {
       console.error('hey from stderr');
     `;
 
-    expect(await cmd.text(program).pipe("node", "-").getAll()).toStrictEqual({
+    expect(await cmd.text(program).pipe(["node", "-"]).getAll()).toStrictEqual({
       stdout: "hey from stdout\n",
       stderr: "hey from stderr\n",
     });
@@ -171,13 +176,13 @@ describe("subprocess tests", () => {
   // stdin since that's hard to do in a normal test.
 
   beforeAll(async () => {
-    await cmd("yarn", "build-js").runSilent();
+    await cmd(["yarn", "build-js"]).runSilent();
   });
 
   it("cmd.stdin()....run() correctly uses stdin", async () => {
     let scriptPath = "test/test-scripts/cmd-runcorrectly-uses-stdin.js";
     expect(
-      await cmd.text("apple\nbanana\n").pipe("node", scriptPath).getAll()
+      await cmd.text("apple\nbanana\n").pipe(["node", scriptPath]).getAll()
     ).toStrictEqual({
       stdout: [
         "apple",
@@ -197,7 +202,7 @@ describe("subprocess tests", () => {
 
   it("cmd.run() correctly forwards stdout and stderr", async () => {
     let scriptPath = "test/test-scripts/cmd-runDebug.js";
-    expect(await cmd("node", scriptPath).getAll()).toStrictEqual({
+    expect(await cmd(["node", scriptPath]).getAll()).toStrictEqual({
       stdout: "this is from stdout\n",
       stderr: "this is from stderr\n",
     });
@@ -206,7 +211,7 @@ describe("subprocess tests", () => {
   it("use cmd.stdin() and cmd.get() together", async () => {
     let scriptPath = "test/test-scripts/stdin-and-get-together.js";
     expect(
-      await cmd.text("one\ntwo\n").pipe("node", scriptPath).getAll()
+      await cmd.text("one\ntwo\n").pipe(["node", scriptPath]).getAll()
     ).toStrictEqual({
       stdout: "",
       stderr: "result: one there\ntwo there\n\n",

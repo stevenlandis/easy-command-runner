@@ -2,7 +2,7 @@ import * as child_process from "child_process";
 import * as fs from "fs";
 import { Stream, Writable } from "stream";
 
-export function cmd(...input: CmdInput): Cmd {
+export function cmd(input: CmdInput): Cmd {
   let cmdInput = parseCommandInput(input);
   return new Cmd({
     command: cmdInput.command,
@@ -16,26 +16,35 @@ cmd.file = (path: string) => new CmdFile(path);
 cmd.text = (text: string) => new CmdString(text);
 cmd.stdin = () => new CmdStdin();
 
+type Command = string | string[];
+
 type CmdInput =
-  | string[]
-  | [{ cmd: string[]; cwd?: string; env?: Record<string, string> }];
+  | Command
+  | { cmd: Command; cwd?: string; env?: Record<string, string> };
+
 function parseCommandInput(input: CmdInput): {
-  command: string[];
+  command: Command;
   cwd?: string;
   env?: Record<string, string>;
 } {
-  if (input.length === 1 && typeof input[0] !== "string") {
-    return { command: input[0].cmd, cwd: input[0].cwd, env: input[0].env };
+  if (typeof input === "string") {
+    return { command: input };
   }
-  return {
-    command: input as string[],
-  };
+
+  if (Array.isArray(input)) {
+    return { command: input };
+  }
+
+  if (typeof input !== "object") {
+    throw Error("Invalid input");
+  }
+  return { command: input.cmd, cwd: input.cwd, env: input.env };
 }
 
 abstract class CmdSource {
   abstract getStreams(opts: GetStreamsInput): Promise<GetStreamsOutput>;
 
-  pipe(...input: CmdInput) {
+  pipe(input: CmdInput) {
     let cmdInput = parseCommandInput(input);
     return new Cmd({
       command: cmdInput.command,
@@ -131,7 +140,7 @@ class CmdString extends CmdSource {
 }
 
 class Cmd extends CmdSource {
-  command: string[];
+  command: Command;
   cwd?: string;
   source?: CmdSource;
   env?: Record<string, string>;
@@ -142,7 +151,7 @@ class Cmd extends CmdSource {
     source,
     env,
   }: {
-    command: string[];
+    command: Command;
     cwd: string | undefined;
     source: CmdSource | undefined;
     env: Record<string, string> | undefined;
@@ -180,7 +189,12 @@ class Cmd extends CmdSource {
     let stdout = input.stdout;
     let stderr = input.stderr;
 
-    let proc = child_process.spawn(this.command[0], this.command.slice(1), {
+    let command_parts =
+      typeof this.command === "string"
+        ? ["/bin/sh", "-c", this.command]
+        : this.command;
+
+    let proc = child_process.spawn(command_parts[0], command_parts.slice(1), {
       cwd: this.cwd,
       stdio: [stdin, stdout, stderr],
       env:
@@ -344,7 +358,7 @@ class Cmd extends CmdSource {
 }
 
 export class CmdError extends Error {
-  constructor(public code: number | null, public command: string[]) {
+  constructor(public code: number | null, public command: Command) {
     super(`Command ${JSON.stringify(command)} failed with code ${code}`);
     Object.setPrototypeOf(this, CmdError.prototype);
   }
