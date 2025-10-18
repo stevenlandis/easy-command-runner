@@ -39,8 +39,8 @@ async function main() {
 
   await cmd(["git", "commit", "-am", `release version ${nextVersion}`]).run();
   let tagName = `v${nextVersion}`;
-  await cmd(["git", "tag", tagName]).runDebug();
-  await cmd("git push").runDebug();
+  await cmd(["git", "tag", tagName]).run();
+  await cmd("git push").run();
   await cmd(["git", "push", "origin", tagName]);
 }
 
